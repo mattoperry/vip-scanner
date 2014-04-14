@@ -49,7 +49,7 @@ class WordPressCodingStandardsCheck extends BaseCheck {
                 'No shell_exec() is available',
                 BaseScanner::LEVEL_WARNING,
                 null,
-                array( 'Your server may not be configured to allow the use of shell_exec() which is required by the WordPress Coding Standards Check.  See your php.ini for details.' )
+                array( 'WordPressCodingStandards: Your server may not allow the use of shell_exec() check php.ini' )
             );
             return true;
         }
