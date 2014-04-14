@@ -86,4 +86,6 @@ VIP_Scanner::get_instance()->register_review( 'VIP Plugin Review', array(
 ), array(
     'PHPAnalyzer',
     'CustomResourceAnalyzer',
-) );
+),
+   'plugin'
+);

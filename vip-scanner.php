@@ -112,15 +112,18 @@ class VIP_Scanner_UI {
 	function display_vip_scanner_form() {
 		$themes = wp_get_themes();
 		$review_types = VIP_Scanner::get_instance()->get_review_types();
+        $reviews = VIP_Scanner::get_instance()->get_reviews();
 		$current_theme = isset( $_GET[ 'vip-scanner-theme-name' ] ) ? sanitize_text_field( $_GET[ 'vip-scanner-theme-name' ] ) : get_stylesheet();
 		$current_review = isset( $_GET[ 'vip-scanner-review-type' ] ) ? sanitize_text_field( $_GET[ 'vip-scanner-review-type' ] ) : $review_types[ $this->default_review ]; // TODO: eugh, need better error checking
 		?>
 		<form method="GET">
 			<input type="hidden" name="page" value="<?php echo self::key; ?>" />
 			<select name="vip-scanner-review-type">
-				<?php foreach ( $review_types as $review_type ) : ?>
-					<option <?php selected( $current_review, $review_type ); ?> value="<?php echo esc_attr( $review_type ); ?>"><?php echo esc_html( $review_type ); ?></option>
-				<?php endforeach; ?>
+				<?php   foreach ( $review_types as $review_type ) :
+                            if ( 'theme' == $reviews[ $review_type ]['type'] ):?>
+					            <option <?php selected( $current_review, $review_type ); ?> value="<?php echo esc_attr( $review_type ); ?>"><?php echo esc_html( $review_type ); ?></option>
+				<?php       endif;
+                        endforeach;?>
 			</select>
 			<?php submit_button( 'Scan', 'primary', false, false ); ?>
 		</form>

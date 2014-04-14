@@ -51,10 +51,15 @@ class VIP_Scanner {
 		return false;
 	}
 
-	function register_review( $name, $checks, $analyzers = array() ) {
+    function get_reviews( ) {
+        return $this->reviews;
+    }
+
+	function register_review( $name, $checks, $analyzers = array(), $type = 'theme' ) {
 		$this->reviews[ $name ] = array(
 			'checks'	=> (array) $checks,
 			'analyzers' => (array) $analyzers,
+            'type'      => (string) $type,
 		);
 	}
 
