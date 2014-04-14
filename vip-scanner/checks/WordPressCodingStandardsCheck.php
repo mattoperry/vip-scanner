@@ -41,6 +41,19 @@ class WordPressCodingStandardsCheck extends BaseCheck {
 	private $sniffer_slug_regex = '/\((?P<slug>(\w+\.)+\w+)\)/';
 
 	function check( $files ) {
+
+        // Check for shell_exec()
+        if( shell_exec( 'echo EXEC' ) != 'EXEC' ){
+            $this->add_error(
+                'no_shell_exec',
+                'No shell_exec() is available',
+                BaseScanner::LEVEL_WARNING,
+                null,
+                array( 'Your server may not be configured to allow the use of shell_exec() which is required by the WordPress Coding Standards Check.  See your php.ini for details.' )
+            );
+            return true;
+        }
+
 		// Check for PHP CodeSniffer
 		if ( ! self::is_phpcs_available() ) {
 			$this->add_error(

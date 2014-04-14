@@ -14,9 +14,10 @@ class VIPScanner_Command extends WP_CLI_Command {
 	 * Perform checks on a theme
 	 *
 	 * @subcommand scan-theme
-	 * @synopsis --theme=<theme-name> --scan_type=<scan-type> [--format=<format>] [--summary=<summary>]
+	 * @synopsis --theme=<theme-name> [--scan_type=<scan-type>] [--format=<format>] [--summary=<summary>]
 	 */
 	public function scan_theme( $args, $assoc_args ) {
+
 		$defaults = array(
 			'theme'			=> null,
 			'scan_type' 	=> 'WP.org Theme Review',
@@ -31,79 +32,33 @@ class VIPScanner_Command extends WP_CLI_Command {
 		if ( ! $scanner )
 			WP_CLI::error( sprintf( 'Scanning of %s failed', $args['theme'] ) );
 
-		if ( $args['summary'] ) {
-			$results = $scanner->get_results();
-
-			$data = array();
-
-			$data[] = array(
-				'key' 	=> __( 'Result' ),
-				'value' => $results['result']
-			);
-
-			$data[] = array(
-				'key' 	=> __( 'Total Files' ),
-				'value' => $results['total_files']
-			);
-
-			$data[] = array(
-				'key' 	=> __( 'Total Checks' ),
-				'value' => $results['total_checks']
-			);
-
-			$data[] = array(
-				'key' 	=> __( 'Total Errors' ),
-				'value' => count( $results['errors'] )
-			);
-
-			foreach ( $scanner->get_error_levels() as $level ) {
-				$label 			= __( ucfirst( $level ) . 's' );
-				$error_count 	= count( $scanner->get_errors( array( $level ) ) );
-
-				$data[] = array(
-					'key' 	=> $label,
-					'value' => $error_count
-				);
-			}
-
-			WP_CLI\Utils\format_items( $args['format'], $data, array( 'key', 'value' ) );
-		} else {
-			$data = array();
-
-			foreach ( $scanner->get_error_levels() as $level ) {
-				$errors 	= $scanner->get_errors( array( $level ) );
-
-				foreach ( $errors as $error ) {
-					$lines = array();
-
-					// Not all errors have lines
-					if ( isset( $error['lines'] ) )
-						$lines = $error['lines'];
-
-					// In JSON output, group the lines together
-					if ( 'json' == $args['format'] ) {
-						$data[] = array( 
-							'level' 		=> $error['level'],
-							'description' 	=> $error['description'],
-							'lines' 		=> $lines,
-							'file'			=> $error['file']
-						);
-					} else { // In other output, each line gets its own entry
-						foreach ( $lines as $line ) {
-							$data[] = array( 
-								'level' 		=> $error['level'],
-								'description' 	=> $error['description'],
-								'lines' 		=> $line,
-								'file'			=> $error['file']
-							);
-						}
-					}
-				}
-			}
-
-			WP_CLI\Utils\format_items( $args['format'], $data, array( 'level', 'description', 'lines', 'file' ) );
-		}
+        $this->do_scan_output( $scan, $args );
 	}
+
+    /**
+     * Perform checks on a plugin
+     *
+     * @subcommand scan-plugin
+     * @synopsis --plugin=<plugin-name> [--scan_type=<scan-type>] [--format=<format>] [--summary=<summary>]
+     */
+
+    public function scan_plugin( $args, $assoc_args ) {
+
+        $defaults = array(
+            'plugin'		=> null,
+            'scan_type' 	=> 'VIP Plugin Review',
+            'format' 		=> 'table',
+            'summary' 		=> false
+        );
+
+        $args = wp_parse_args( $assoc_args, $defaults );
+        $scanner = VIP_Scanner::get_instance()->run_plugin_review( $args['plugin'], $args['scan_type'], array( 'checks' ) );
+
+        if ( ! $scanner )
+            WP_CLI::error( sprintf( 'Scanning of %s failed', $args['plugin'] ) );
+
+        $this->do_scan_output( $scanner, $args );
+    }
 
 	/**
 	 * Runs the analyzers for the given review on the theme.
@@ -112,9 +67,10 @@ class VIPScanner_Command extends WP_CLI_Command {
 	 * you would like outputted. 0 outputs everything.
 	 * 
 	 * @subcommand analyze-theme
-	 * @synopsis --theme=<theme-name> --scan_type=<scan-type> [--depth=<depth>]
+	 * @synopsis --theme=<theme-name> [--scan_type=<scan-type>] [--depth=<depth>]
 	 */
 	public function analyze_theme( $args, $assoc_args ) {
+
 		$defaults = array(
 			'theme'		=> null,
 			'scan_type' => 'WP.org Theme Review',
@@ -129,28 +85,146 @@ class VIPScanner_Command extends WP_CLI_Command {
 			WP_CLI::error( sprintf( 'Scanning of %s failed', $args['theme'] ) );
 		}
 
-		$empty = array();
-		$display_args = array(
-			'bare'  => true,
-			'depth' => $args['depth'],
-		);
-
-		foreach ( $scanner->renderers as $renderer ) {
-			// Display empty renderers after the others
-			if ( $renderer->is_empty() ) {
-				$empty[] = $renderer;
-				continue;
-			}
-
-			if ( $renderer->name() !== 'Files' ) {
-				$renderer->analyze_prefixes();
-			}
-
-			WP_CLI::line( $renderer->display( false, $display_args ) );
-		}
-
-		foreach ( $empty as $renderer ) {
-			$renderer->display( true, $display_args );
-		}
+        $this->render_analysis( $scanner, $args );
 	}
+
+    /**
+     * Runs the analyzers for the given review on the plugin.
+     *
+     * You can change the <depth> parameter to indicate how many levels of hierarchy
+     * you would like outputted. 0 outputs everything.
+     *
+     * @subcommand analyze-plugin
+     * @synopsis --plugin=<plugin-name> [--scan_type=<scan-type>] [--depth=<depth>]
+     */
+
+    public function analyze_plugin( $args, $assoc_args ) {
+
+        $defaults = array(
+            'plugin'		=> null,
+            'scan_type' 	=> 'VIP Plugin Review',
+            'depth'		=> 1,
+        );
+
+        $args = wp_parse_args( $assoc_args, $defaults );
+
+        $scanner = VIP_Scanner::get_instance()->run_plugin_review( $args['plugin'], $args['scan_type'], array( 'analyzers' ) );
+
+        if ( ! $scanner ) {
+            WP_CLI::error( sprintf( 'Scanning of %s failed', $args['plugin'] ) );
+        }
+
+        $this->render_analysis ($scanner, $args );
+
+    }
+
+    /**
+     * Handles output for scans (both theme and plugin)
+     *
+     */
+    private function do_scan_output( $scanner, $args ) {
+        if ( $args['summary'] ) {
+            $results = $scanner->get_results();
+
+            $data = array();
+
+            $data[] = array(
+                'key' 	=> __( 'Result' ),
+                'value' => $results['result']
+            );
+
+            $data[] = array(
+                'key' 	=> __( 'Total Files' ),
+                'value' => $results['total_files']
+            );
+
+            $data[] = array(
+                'key' 	=> __( 'Total Checks' ),
+                'value' => $results['total_checks']
+            );
+
+            $data[] = array(
+                'key' 	=> __( 'Total Errors' ),
+                'value' => count( $results['errors'] )
+            );
+
+            foreach ( $scanner->get_error_levels() as $level ) {
+                $label 			= __( ucfirst( $level ) . 's' );
+                $error_count 	= count( $scanner->get_errors( array( $level ) ) );
+
+                $data[] = array(
+                    'key' 	=> $label,
+                    'value' => $error_count
+                );
+            }
+
+            WP_CLI\Utils\format_items( $args['format'], $data, array( 'key', 'value' ) );
+
+        } else {
+            $data = array();
+
+            foreach ( $scanner->get_error_levels() as $level ) {
+                $errors 	= $scanner->get_errors( array( $level ) );
+
+                foreach ( $errors as $error ) {
+                    $lines = array();
+
+                    // Not all errors have lines
+                    if ( isset( $error['lines'] ) )
+                        $lines = $error['lines'];
+
+                    // In JSON output, group the lines together
+                    if ( 'json' == $args['format'] ) {
+                        $data[] = array(
+                            'level' 		=> $error['level'],
+                            'description' 	=> $error['description'],
+                            'lines' 		=> $lines,
+                            'file'			=> $error['file']
+                        );
+                    } else { // In other output, each line gets its own entry
+                        foreach ( $lines as $line ) {
+                            $data[] = array(
+                                'level' 		=> $error['level'],
+                                'description' 	=> $error['description'],
+                                'lines' 		=> $line,
+                                'file'			=> $error['file']
+                            );
+                        }
+                    }
+                }
+            }
+
+            WP_CLI\Utils\format_items( $args['format'], $data, array( 'level', 'description', 'lines', 'file' ) );
+        }
+    }
+
+    /**
+     * Handles output for all analyzers (theme and plugin)
+     */
+    private function render_analysis ( $scanner, $args ) {
+        $empty = array();
+        $display_args = array(
+            'bare'  => true,
+            'depth' => $args['depth'],
+        );
+
+        foreach ( $scanner->renderers as $renderer ) {
+            // Display empty renderers after the others
+            if ( $renderer->is_empty() ) {
+                $empty[] = $renderer;
+                continue;
+            }
+
+            if ( $renderer->name() !== 'Files' ) {
+                $renderer->analyze_prefixes();
+            }
+
+            WP_CLI::line( $renderer->display( false, $display_args ) );
+        }
+
+        foreach ( $empty as $renderer ) {
+            $renderer->display( true, $display_args );
+        }
+    }
+
 }

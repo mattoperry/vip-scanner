@@ -76,3 +76,14 @@ VIP_Scanner::get_instance()->register_review( 'VIP Theme Review', array(
 	'CustomResourceAnalyzer',
 	'ThemeAnalyzer',
 ) );
+
+VIP_Scanner::get_instance()->register_review( 'VIP Plugin Review', array(
+    'VIPRestrictedPatternsCheck',
+    'VIPRestrictedCommandsCheck',
+    'PHPShortTagsCheck',
+    'VCMergeConflictCheck',
+    'WordPressCodingStandardsCheck',
+), array(
+    'PHPAnalyzer',
+    'CustomResourceAnalyzer',
+) );

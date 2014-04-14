@@ -12,6 +12,7 @@ require_once( VIP_SCANNER_DIR . '/class-base-check.php' );
 require_once( VIP_SCANNER_DIR . '/class-base-scanner.php' );
 require_once( VIP_SCANNER_DIR . '/class-directory-scanner.php' );
 require_once( VIP_SCANNER_DIR . '/class-theme-scanner.php' );
+require_once( VIP_SCANNER_DIR . '/class-plugin-scanner.php' );
 require_once( VIP_SCANNER_DIR . '/class-content-scanner.php' );
 require_once( VIP_SCANNER_DIR . '/class-diff-scanner.php' );
 require_once( VIP_SCANNER_DIR . '/class-preg-file.php' );
@@ -58,14 +59,31 @@ class VIP_Scanner {
 	}
 
 	function run_theme_review( $theme, $review_type, $scanners = array( 'checks', 'analyzers' ) ) {
-		$review = $this->get_review( $review_type );
-		if ( ! $review )
-			return false;
-
-		$scanner = new ThemeScanner( $theme, $review );
-		$scanner->scan( $scanners );
-		return $scanner;
+        return $this->run_review( 'theme', $theme, $review_type, $scanners );
 	}
+
+    //plugin may be a string containing the shortname of the plugin, or a full path to a plugin file or directory
+    function run_plugin_review( $plugin, $review_type, $scanners = array( 'checks', 'analyzers' ) ) {
+        return $this->run_review( 'plugin', $plugin, $review_type, $scanners );
+    }
+
+    function run_review( $type, $item, $review_type, $scanners ) {
+
+        $ScannerClass = '';
+        if ( 'plugin' == $type ) {
+            $ScannerClass = 'PluginScanner';
+        }elseif ( 'theme' == $type ) {
+            $ScannerClass = 'ThemeScanner';
+        }
+        $review = $this->get_review( $review_type );
+
+        if ( !$review || !$ScannerClass )
+            return false;
+
+        $scanner = new $ScannerClass( $item, $review );
+        $scanner->scan( $scanners );
+        return $scanner;
+    }
 }
 
 // Initialize!

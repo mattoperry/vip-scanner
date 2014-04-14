@@ -40,9 +40,16 @@ class DirectoryScanner extends BaseScanner
 				closedir( $handle );
 			}
 		} else {
-			// function was called with an invalid non-directory argument
-			$this->add_error( 'invalid-directory', sprintf( 'Directory doesn\'t exist: %s', $directory ), 'blocker', $directory );
-			return false;
+
+            //check if a single file was passed as an argument
+            if ( file_exists( $directory ) ) {
+                $files = array( $directory );
+            } else {
+                // function was called with an invalid non-directory argument
+                $this->add_error( 'invalid-directory', sprintf( 'Directory doesn\'t exist: %s', $directory ), 'blocker', $directory );
+                return false;
+            }
+
 		}
 		return $files;
 	}
