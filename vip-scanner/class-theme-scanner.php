@@ -6,8 +6,12 @@ class ThemeScanner extends DirectoryScanner
 		if( ! function_exists( 'get_theme_root' ) )
 			return $this->add_error( 'wp-load', sprintf( '%s requires WordPress to be loaded.', get_class( $this ) ), 'blocker' );
 
-		// Get Theme Path
-		$path = sprintf( '%s/%s', get_theme_root(), $theme );
+        if ( strpos( $theme, '/' ) !== false && is_dir( $theme )  ) {
+            $path = $theme;
+        } else {
+            // If theme is not a path, then we scan the current theme
+            $path = sprintf( '%s/%s', get_theme_root(), $theme );
+        }
 
 		// Call Parent Constructor
 		parent::__construct( $path, $review );
